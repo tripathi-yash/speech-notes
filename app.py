@@ -208,7 +208,7 @@ def run(audio_path, reference, language):
     return text, stats, errors, str(out_path), list(HISTORY)
 
 
-with gr.Blocks(title="Speech Notes") as demo:
+with gr.Blocks(title="Speech Notes", theme=THEME, css=CSS) as demo:
     gr.HTML(HERO)
 
     with gr.Tabs():
@@ -253,4 +253,4 @@ with gr.Blocks(title="Speech Notes") as demo:
     )
 
 if __name__ == "__main__":
-    demo.launch(theme=THEME, css=CSS)
+    demo.launch()

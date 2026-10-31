@@ -220,7 +220,7 @@ with gr.Blocks(title="Speech Notes", theme=THEME, css=CSS) as demo:
                                      show_label=False)
                     gr.HTML('<div class="sec"><i>2</i> Language</div>')
                     language = gr.Dropdown(
-                        choices=[("English", "en"), ("Auto-detect", "auto")],
+                        choices=[("English", "en"), ("Hindi", "hi"), ("Urdu", "ur"), ("Auto-detect", "auto")],
                         value="en", show_label=False,
                     )
                     gr.HTML('<div class="sec"><i>3</i> Reference (optional)</div>')

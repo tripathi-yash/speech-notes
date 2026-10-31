@@ -26,13 +26,20 @@ class WerResult:
         return self.errors / self.ref_words
 
 
+import unicodedata
+
 ABBREVIATIONS = {"mr": "mister", "mrs": "missus", "ms": "miss", "dr": "doctor"}
 
 def normalize(text: str) -> list[str]:
-    """Lower-case, strip punctuation (keeping apostrophes), expand abbreviations, split into words."""
-    text = text.lower()
-    text = re.sub(r"[^\w\s']", " ", text)
-    return [ABBREVIATIONS.get(w, w) for w in text.split()]
+    """Lower-case, drop punctuation in any script, keep marks, expand abbreviations."""
+    chars = []
+    for ch in text.lower():
+        cat = unicodedata.category(ch)
+        if ch.isspace() or ch == "'" or cat[0] in "LMN":  # letters, marks, numbers
+            chars.append(ch)
+        else:
+            chars.append(" ")
+    return [ABBREVIATIONS.get(w, w) for w in "".join(chars).split()]
 
 def align(ref: list[str], hyp: list[str]) -> WerResult:
     """Align two word lists and count substitutions, deletions and insertions."""

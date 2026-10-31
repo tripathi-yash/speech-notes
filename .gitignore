@@ -1,0 +1,14 @@
+.venv/
+.tools/
+data/
+results/
+report/
+librispeech/
+LibriSpeech/
+__pycache__/
+frontend/
+backend/
+*.zip
+*.tar.gz
+*.flac
+*.wav

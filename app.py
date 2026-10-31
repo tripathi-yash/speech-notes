@@ -1,4 +1,4 @@
-"""Speech Notes: Gradio web app for Hugging Face Spaces."""
+"""Speech Notes: Gradio web app for Hugging Face Spaces (ZeroGPU)."""
 import sys
 import tempfile
 import time
@@ -13,6 +13,13 @@ sys.path.insert(0, str(ROOT / "src"))
 from check_env import check as check_ffmpeg  # noqa: E402
 from cleanup import clean_transcript  # noqa: E402
 from wer import compute_wer, error_lines  # noqa: E402
+
+try:
+    import spaces
+    gpu = spaces.GPU
+except ImportError:  # running locally, where the spaces package is not installed
+    def gpu(fn):
+        return fn
 
 MODEL_SIZE = "base"
 FFMPEG_OK = check_ffmpeg()
@@ -143,10 +150,21 @@ HINT = ('<div class="hint">Paste a reference transcript to see the accuracy (WER
 
 
 def get_model():
+    """Load Whisper on the CPU once. It moves to the GPU only during transcription."""
     global _model
     if _model is None:
-        _model = whisper.load_model(MODEL_SIZE)
+        _model = whisper.load_model(MODEL_SIZE, device="cpu")
     return _model
+
+
+@gpu
+def transcribe_audio(audio_path, language):
+    """Runs on the GPU when ZeroGPU provides one, otherwise on the CPU."""
+    import torch
+    model = get_model()
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    model.to(device)
+    return model.transcribe(audio_path, language=language, fp16=(device == "cuda"))
 
 
 def stat_cards(wer_percent, subs, dels, ins, words):
@@ -169,7 +187,7 @@ def run(audio_path, reference, language):
         raise gr.Error("ffmpeg is not available on this server.")
 
     lang = None if language == "auto" else language
-    raw = get_model().transcribe(audio_path, language=lang, fp16=False)
+    raw = transcribe_audio(audio_path, lang)
     text = clean_transcript(raw["text"])
 
     stats, errors, wer_value = HINT, "", "-"
@@ -190,7 +208,7 @@ def run(audio_path, reference, language):
     return text, stats, errors, str(out_path), list(HISTORY)
 
 
-with gr.Blocks(title="Speech Notes", theme=THEME, css=CSS) as demo:
+with gr.Blocks(title="Speech Notes") as demo:
     gr.HTML(HERO)
 
     with gr.Tabs():
@@ -235,4 +253,4 @@ with gr.Blocks(title="Speech Notes", theme=THEME, css=CSS) as demo:
     )
 
 if __name__ == "__main__":
-    demo.launch()
+    demo.launch(theme=THEME, css=CSS)

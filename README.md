@@ -11,8 +11,7 @@ pinned: false
 
 # Speech Notes
 
-Turn a short recording into text, and measure accuracy against a reference transcript
-using Word Error Rate (WER). Transcription uses the open-source Whisper model.
+Turn a short recording into text, and measure accuracy against a reference transcript using Word Error Rate (WER). Transcription uses the open-source Whisper model.
 
 ## Structure
 

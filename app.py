@@ -21,7 +21,7 @@ except ImportError:  # running locally, where the spaces package is not installe
     def gpu(fn):
         return fn
 
-MODEL_SIZE = "medium"
+MODEL_SIZE = "large"
 FFMPEG_OK = check_ffmpeg()
 _model = None
 HISTORY = []  # kept in memory; cleared when the Space restarts

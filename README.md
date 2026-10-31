@@ -45,7 +45,18 @@ and click **Transcribe**.
 ```
 python -m unittest discover -s tests -v
 ```
+## Clone 
 
+```
+git clone https://github.com/tripathi-yash/speech-notes.git
+
+```
+
+## Deployed 
+
+```
+https://huggingface.co/spaces/Ykode/speech-notes
+```
 ## Responsible use
 
 - Use only consented or public audio.

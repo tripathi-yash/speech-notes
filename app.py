@@ -259,13 +259,16 @@ def begin_on_upload(path):
     return begin_busy()
 
 
-def upload_tick(started):
+def upload_tick(path, started):
+    """Runs every second while the box is busy. It also checks whether the audio has arrived,
+    so the box clears even when Gradio's change event does not fire."""
+    if path:
+        return finish_upload(path)
     if started is None:
-        return gr.update()
+        return gr.update(), gr.update(), gr.update(), gr.update()
     elapsed = int(time.time() - started)
-    if elapsed >= 120:
-        return upload_status("slow", elapsed)
-    return upload_status("uploading", elapsed)
+    msg = upload_status("slow", elapsed) if elapsed >= 120 else upload_status("uploading", elapsed)
+    return gr.update(), msg, gr.update(), gr.update()
 
 
 # Load the model once at startup, so the first request does not wait for the download
@@ -324,7 +327,7 @@ with gr.Blocks(title="Speech Notes", theme=THEME, css=CSS) as demo:
     audio.stop_recording(begin_busy, None, lock_outputs)
     audio.upload(begin_on_upload, [audio], lock_outputs)
     audio.change(finish_upload, [audio], lock_outputs)
-    upload_timer.tick(upload_tick, [upload_state], [upload_msg])
+    upload_timer.tick(upload_tick, [audio, upload_state], lock_outputs)
 
 if __name__ == "__main__":
     demo.launch()

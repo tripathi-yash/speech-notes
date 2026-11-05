@@ -128,6 +128,23 @@ footer { display: none !important; }
   border: 1px dashed rgba(255,255,255,0.16); border-radius: 18px; padding: 26px 16px;
 }
 .empty .big { font-size: 40px; margin-bottom: 6px; }
+
+/* Upload status */
+.upload-status {
+  border-radius: 16px; padding: 14px 16px; margin: 10px 0; font-size: 14px; line-height: 1.5;
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #cbd5e1;
+}
+.upload-status.busy { border-color: rgba(129,140,248,0.5); background: rgba(99,102,241,0.12); }
+.upload-status.slow { border-color: rgba(245,158,11,0.5); background: rgba(245,158,11,0.1); color: #fde68a; }
+.upload-status.ok { border-color: rgba(34,197,94,0.45); background: rgba(34,197,94,0.1); color: #bbf7d0; }
+.upload-status small { color: #94a3b8; }
+.spin {
+  display: inline-block; width: 12px; height: 12px; margin-right: 6px; vertical-align: middle;
+  border: 2px solid #a5b4fc; border-right-color: transparent; border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.primary-btn:disabled { opacity: 0.45 !important; cursor: not-allowed !important; transform: none !important; animation: none !important; }
 """
 
 HERO = """
@@ -208,6 +225,49 @@ def run(audio_path, reference, language):
     return text, stats, errors, str(out_path), list(HISTORY)
 
 
+def upload_status(kind, seconds=0):
+    """Status box shown under the recording box while audio is being sent to the server."""
+    if kind == "uploading":
+        return (f'<div class="upload-status busy"><span class="spin"></span>'
+                f'Uploading your audio… <b>{seconds}s</b><br>'
+                f'<small>Please wait. Transcribe unlocks when the upload finishes.</small></div>')
+    if kind == "slow":
+        return (f'<div class="upload-status slow"><span class="spin"></span>'
+                f'Still uploading after <b>{seconds}s</b>. Check your connection. '
+                f'Very large files take longer; a shorter clip uploads faster.</div>')
+    if kind == "ready":
+        return '<div class="upload-status ok">✅ Audio uploaded. You can press Transcribe now.</div>'
+    return '<div class="upload-status">Choose a file or record audio to begin.</div>'
+
+
+def begin_busy():
+    """Recording started or a file is being sent: lock Transcribe and start the timer."""
+    return time.time(), upload_status("uploading", 0), gr.update(interactive=False), gr.update(active=True)
+
+
+def finish_upload(path):
+    """Audio is on the server (or was cleared): unlock Transcribe only if a file is present."""
+    if not path:
+        return None, upload_status("idle"), gr.update(interactive=False), gr.update(active=False)
+    return None, upload_status("ready"), gr.update(interactive=True), gr.update(active=False)
+
+
+def begin_on_upload(path):
+    # The upload event can arrive after the audio is already on the server; then it is ready.
+    if path:
+        return finish_upload(path)
+    return begin_busy()
+
+
+def upload_tick(started):
+    if started is None:
+        return gr.update()
+    elapsed = int(time.time() - started)
+    if elapsed >= 120:
+        return upload_status("slow", elapsed)
+    return upload_status("uploading", elapsed)
+
+
 # Load the model once at startup, so the first request does not wait for the download
 get_model()
 
@@ -221,6 +281,9 @@ with gr.Blocks(title="Speech Notes", theme=THEME, css=CSS) as demo:
                     gr.HTML('<div class="sec"><i>1</i> Recording</div>')
                     audio = gr.Audio(sources=["upload", "microphone"], type="filepath",
                                      format="mp3", show_label=False)
+                    upload_state = gr.State(None)
+                    upload_timer = gr.Timer(1, active=False)
+                    upload_msg = gr.HTML(upload_status("idle"))
                     gr.HTML('<div class="sec"><i>2</i> Language</div>')
                     language = gr.Dropdown(
                         choices=[("English", "en"), ("Hindi", "hi"), ("Urdu", "ur"), ("Auto-detect", "auto")],
@@ -231,7 +294,7 @@ with gr.Blocks(title="Speech Notes", theme=THEME, css=CSS) as demo:
                         lines=6, show_label=False,
                         placeholder="Paste the correct transcript to measure accuracy…",
                     )
-                    run_btn = gr.Button("Transcribe ✨", elem_classes="primary-btn")
+                    run_btn = gr.Button("Transcribe ✨", elem_classes="primary-btn", interactive=False)
 
                 with gr.Column(scale=6, elem_classes="panel"):
                     gr.HTML('<div class="sec"><i>✓</i> Result</div>')
@@ -254,6 +317,14 @@ with gr.Blocks(title="Speech Notes", theme=THEME, css=CSS) as demo:
         inputs=[audio, reference, language],
         outputs=[transcript, stats, errors, download, history],
     )
+
+    # Keep Transcribe locked until the recording or file is fully on the server
+    lock_outputs = [upload_state, upload_msg, run_btn, upload_timer]
+    audio.start_recording(begin_busy, None, lock_outputs)
+    audio.stop_recording(begin_busy, None, lock_outputs)
+    audio.upload(begin_on_upload, [audio], lock_outputs)
+    audio.change(finish_upload, [audio], lock_outputs)
+    upload_timer.tick(upload_tick, [upload_state], [upload_msg])
 
 if __name__ == "__main__":
     demo.launch()

@@ -12,3 +12,4 @@ backend/
 *.tar.gz
 *.flac
 *.wav
+logs/

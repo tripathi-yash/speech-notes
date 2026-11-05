@@ -182,7 +182,7 @@ def stat_cards(wer_percent, subs, dels, ins, words):
 
 def run(audio_path, reference, language):
     if not audio_path:
-        raise gr.Error("Upload or record a clip first.")
+        raise gr.Error("No audio reached the server. Wait for the recording to finish, then press Transcribe once.")
     if not FFMPEG_OK:
         raise gr.Error("ffmpeg is not available on this server.")
 
@@ -207,6 +207,9 @@ def run(audio_path, reference, language):
 
     return text, stats, errors, str(out_path), list(HISTORY)
 
+
+# Load the model once at startup, so the first request does not wait for the download
+get_model()
 
 with gr.Blocks(title="Speech Notes", theme=THEME, css=CSS) as demo:
     gr.HTML(HERO)

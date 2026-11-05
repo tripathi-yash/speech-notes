@@ -220,7 +220,7 @@ with gr.Blocks(title="Speech Notes", theme=THEME, css=CSS) as demo:
                 with gr.Column(scale=5, elem_classes="panel"):
                     gr.HTML('<div class="sec"><i>1</i> Recording</div>')
                     audio = gr.Audio(sources=["upload", "microphone"], type="filepath",
-                                     show_label=False)
+                                     format="mp3", show_label=False)
                     gr.HTML('<div class="sec"><i>2</i> Language</div>')
                     language = gr.Dropdown(
                         choices=[("English", "en"), ("Hindi", "hi"), ("Urdu", "ur"), ("Auto-detect", "auto")],
